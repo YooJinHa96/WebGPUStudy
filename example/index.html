@@ -4,6 +4,14 @@
   <head>
     <meta charset="utf-8" />
     <title>02: Drawing a Square - WebGPU Life</title>
+    <input
+      type="range"
+      min="1"
+      max="100"
+      value="50"
+      class="slider"
+      id="myRange"
+    />
   </head>
   <body>
     <canvas width="512" height="512"></canvas>
@@ -31,14 +39,30 @@
       });
 
       // Create a buffer with the vertices for a single cell.
-      const arr = [
-        0,
-        0, // Triangle 1
-        -1,
-        1,
-        0,
-        1,
-      ];
+      const r = 0.8;
+      let degree = 30;
+      let nextDegree = degree;
+      const count = 360 / degree;
+      let radian = (degree / 180) * Math.PI;
+      let zeroCoor = { x: 0, y: 0 };
+      let firstCoor = { x: r * Math.cos(0), y: r * Math.sin(0) };
+      let secondCoor = { x: r * Math.cos(radian), y: r * Math.sin(radian) };
+      const arr = [];
+      arr.push(zeroCoor.x, zeroCoor.y);
+      arr.push(firstCoor.x, firstCoor.y);
+      arr.push(secondCoor.x, secondCoor.y);
+
+      for (let i = 1; i < count; i++) {
+        firstCoor = secondCoor;
+        nextDegree = nextDegree + degree;
+
+        radian = (nextDegree / 180) * Math.PI;
+        secondCoor = { x: r * Math.cos(radian), y: r * Math.sin(radian) };
+        arr.push(zeroCoor.x, zeroCoor.y);
+        arr.push(firstCoor.x, firstCoor.y);
+        arr.push(secondCoor.x, secondCoor.y);
+      }
+
       const vertices = new Float32Array(arr);
       const vertexBuffer = device.createBuffer({
         label: "Cell vertices",
