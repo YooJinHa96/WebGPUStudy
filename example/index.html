@@ -12,11 +12,15 @@
       class="slider"
       id="myRange"
     />
+    <p>Value: <span id="value"></span></p>
   </head>
   <body>
     <canvas width="512" height="512"></canvas>
     <script type="module">
       const canvas = document.querySelector("canvas");
+      var slider = document.getElementById("myRange");
+      var output = document.getElementById("value");
+      output.innerHTML = slider.value;
 
       // WebGPU device initialization
       if (!navigator.gpu) {
@@ -38,54 +42,55 @@
         format: canvasFormat,
       });
 
-      // Create a buffer with the vertices for a single cell.
-      const r = 0.8;
-      let degree = 30;
-      let nextDegree = degree;
-      const count = 360 / degree;
-      let radian = (degree / 180) * Math.PI;
-      let zeroCoor = { x: 0, y: 0 };
-      let firstCoor = { x: r * Math.cos(0), y: r * Math.sin(0) };
-      let secondCoor = { x: r * Math.cos(radian), y: r * Math.sin(radian) };
-      const arr = [];
-      arr.push(zeroCoor.x, zeroCoor.y);
-      arr.push(firstCoor.x, firstCoor.y);
-      arr.push(secondCoor.x, secondCoor.y);
-
-      for (let i = 1; i < count; i++) {
-        firstCoor = secondCoor;
-        nextDegree = nextDegree + degree;
-
-        radian = (nextDegree / 180) * Math.PI;
-        secondCoor = { x: r * Math.cos(radian), y: r * Math.sin(radian) };
+      slider.oninput = function () {
+        output.innerHTML = this.value;
+        const r = 0.8;
+        let degree = Number(this.value);
+        let nextDegree = degree;
+        const count = 360 / degree;
+        let radian = (degree / 180) * Math.PI;
+        let zeroCoor = { x: 0, y: 0 };
+        let firstCoor = { x: r * Math.cos(0), y: r * Math.sin(0) };
+        let secondCoor = { x: r * Math.cos(radian), y: r * Math.sin(radian) };
+        const arr = [];
         arr.push(zeroCoor.x, zeroCoor.y);
         arr.push(firstCoor.x, firstCoor.y);
         arr.push(secondCoor.x, secondCoor.y);
-      }
 
-      const vertices = new Float32Array(arr);
-      const vertexBuffer = device.createBuffer({
-        label: "Cell vertices",
-        size: vertices.byteLength,
-        usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
-      });
-      device.queue.writeBuffer(vertexBuffer, 0, vertices);
+        for (let i = 1; i < count; i++) {
+          firstCoor = secondCoor;
+          nextDegree = nextDegree + degree;
 
-      const vertexBufferLayout = {
-        arrayStride: 8,
-        attributes: [
-          {
-            format: "float32x2",
-            offset: 0,
-            shaderLocation: 0, // Position. Matches @location(0) in the @vertex shader.
-          },
-        ],
-      };
+          radian = (nextDegree / 180) * Math.PI;
+          secondCoor = { x: r * Math.cos(radian), y: r * Math.sin(radian) };
+          arr.push(zeroCoor.x, zeroCoor.y);
+          arr.push(firstCoor.x, firstCoor.y);
+          arr.push(secondCoor.x, secondCoor.y);
+        }
 
-      // Create the shader that will render the cells.
-      const cellShaderModule = device.createShaderModule({
-        label: "Cell shader",
-        code: `
+        const vertices = new Float32Array(arr);
+        const vertexBuffer = device.createBuffer({
+          label: "Cell vertices",
+          size: vertices.byteLength,
+          usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
+        });
+        device.queue.writeBuffer(vertexBuffer, 0, vertices);
+
+        const vertexBufferLayout = {
+          arrayStride: 8,
+          attributes: [
+            {
+              format: "float32x2",
+              offset: 0,
+              shaderLocation: 0, // Position. Matches @location(0) in the @vertex shader.
+            },
+          ],
+        };
+
+        // Create the shader that will render the cells.
+        const cellShaderModule = device.createShaderModule({
+          label: "Cell shader",
+          code: `
           @vertex
           fn vertexMain(@location(0) position: vec2f)
             -> @builtin(position) vec4f {
@@ -97,50 +102,52 @@
             return vec4f(1, 0, 0, 1);
           }
         `,
-      });
+        });
 
-      // Create a pipeline that renders the cell.
-      const cellPipeline = device.createRenderPipeline({
-        label: "Cell pipeline",
-        layout: "auto",
-        vertex: {
-          module: cellShaderModule,
-          entryPoint: "vertexMain",
-          buffers: [vertexBufferLayout],
-        },
-        fragment: {
-          module: cellShaderModule,
-          entryPoint: "fragmentMain",
-          targets: [
+        // Create a pipeline that renders the cell.
+        const cellPipeline = device.createRenderPipeline({
+          label: "Cell pipeline",
+          layout: "auto",
+          vertex: {
+            module: cellShaderModule,
+            entryPoint: "vertexMain",
+            buffers: [vertexBufferLayout],
+          },
+          fragment: {
+            module: cellShaderModule,
+            entryPoint: "fragmentMain",
+            targets: [
+              {
+                format: canvasFormat,
+              },
+            ],
+          },
+        });
+
+        // Clear the canvas with a render pass
+        const encoder = device.createCommandEncoder();
+
+        const pass = encoder.beginRenderPass({
+          colorAttachments: [
             {
-              format: canvasFormat,
+              view: context.getCurrentTexture().createView(),
+              loadOp: "clear",
+              clearValue: { r: 0, g: 0, b: 0.4, a: 1.0 },
+              storeOp: "store",
             },
           ],
-        },
-      });
+        });
 
-      // Clear the canvas with a render pass
-      const encoder = device.createCommandEncoder();
+        // Draw the square.
+        pass.setPipeline(cellPipeline);
+        pass.setVertexBuffer(0, vertexBuffer);
+        pass.draw(vertices.length / 2);
 
-      const pass = encoder.beginRenderPass({
-        colorAttachments: [
-          {
-            view: context.getCurrentTexture().createView(),
-            loadOp: "clear",
-            clearValue: { r: 0, g: 0, b: 0.4, a: 1.0 },
-            storeOp: "store",
-          },
-        ],
-      });
+        pass.end();
 
-      // Draw the square.
-      pass.setPipeline(cellPipeline);
-      pass.setVertexBuffer(0, vertexBuffer);
-      pass.draw(vertices.length / 2);
-
-      pass.end();
-
-      device.queue.submit([encoder.finish()]);
+        device.queue.submit([encoder.finish()]);
+      };
+      // Create a buffer with the vertices for a single cell.
     </script>
   </body>
 </html>
