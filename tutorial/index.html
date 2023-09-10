@@ -32,20 +32,22 @@
 
       // Create a buffer with the vertices for a single cell.
       const vertices = new Float32Array([
-        //   X,    Y
-        -0.1,
-        -0.8, // Triangle 1
-        0.8,
-        -0.8,
-        0.8,
-        0.1,
+        -1, -1, 1, 1, -1, 1, 1, 1, 1, 1, 1, 1, -1, 1, 1, -1, -1, 1,
 
-        -0.8,
-        -0.8, // Triangle 2
-        0.8,
-        0.8,
-        -0.8,
-        0.8,
+        // right
+        1, -1, 1, 1, -1, -1, 1, 1, -1, 1, 1, -1, 1, 1, 1, 1, -1, 1,
+
+        // back
+        -1, -1, -1, -1, 1, -1, 1, 1, -1, 1, 1, -1, 1, -1, -1, -1, -1, -1,
+
+        // left
+        -1, -1, 1, -1, 1, 1, -1, 1, -1, -1, 1, -1, -1, -1, -1, -1, -1, 1,
+
+        // top
+        -1, 1, 1, 1, 1, 1, 1, 1, -1, 1, 1, -1, -1, 1, -1, -1, 1, 1,
+
+        // bottom
+        -1, -1, 1, -1, -1, -1, 1, -1, -1, 1, -1, -1, 1, -1, 1, -1, -1, 1,
       ]);
       const vertexBuffer = device.createBuffer({
         label: "Cell vertices",
@@ -55,10 +57,10 @@
       device.queue.writeBuffer(vertexBuffer, 0, vertices);
 
       const vertexBufferLayout = {
-        arrayStride: 8,
+        arrayStride: 12,
         attributes: [
           {
-            format: "float32x2",
+            format: "float32x3",
             offset: 0,
             shaderLocation: 0, // Position. Matches @location(0) in the @vertex shader.
           },
